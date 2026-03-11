@@ -294,6 +294,13 @@
         results = data.results || [];
         totalSessions = data.total || 0;
         selectedIndex = results.length > 0 ? 0 : -1;
+        if (results.length === 0 && totalSessions === 0) {
+          resultCount.textContent = "";
+          resultsPanel.innerHTML = '<div class="empty-state"><div class="icon" style="font-size:32px">&#128269;</div><div style="font-size:14px;margin-bottom:8px">No Claude Code sessions found</div><div style="font-size:12px;color:var(--text-dim);line-height:1.6">Start a session with <code style="background:var(--surface);padding:2px 6px;border-radius:3px">claude</code> first.<br>Sessions appear in <code style="background:var(--surface);padding:2px 6px;border-radius:3px">~/.claude/projects/</code></div></div>';
+          clearPreview();
+          clearBottomBar();
+          return;
+        }
         renderResults();
         if (selectedIndex >= 0) updateBottomBar(results[0]);
         else {
@@ -310,6 +317,19 @@
       }
     }
 
+    async function loadMore() {
+      const currentCount = results.length;
+      const nextBatch = currentCount + 50;
+      const query = searchInput.value.trim();
+      try {
+        const res = await fetch("/api/search?q=" + encodeURIComponent(query) + "&n=" + nextBatch);
+        const data = await res.json();
+        results = data.results || [];
+        totalSessions = data.total || 0;
+        renderResults();
+      } catch (e) { console.error("Load more failed:", e); }
+    }
+
     function renderResults() {
       if (results.length === 0) {
         resultCount.textContent = "";
@@ -320,7 +340,9 @@
       }
       const label = searchInput.value.trim()
         ? results.length + " result" + (results.length !== 1 ? "s" : "")
-        : results.length + " recent / " + totalSessions + " total";
+        : (totalSessions <= results.length
+          ? totalSessions + " session" + (totalSessions !== 1 ? "s" : "")
+          : results.length + " recent / " + totalSessions + " total");
       resultCount.textContent = label;
       // Filter by active folder — replace results so all index-based operations stay consistent
       let displayResults = results;
@@ -338,7 +360,7 @@
         return;
       }
 
-      resultsPanel.innerHTML = displayResults.map((r, i) =>
+      let html = displayResults.map((r, i) =>
         '<div class="result-item' + (i === selectedIndex ? " selected" : "") + '" data-index="' + i + '" onclick="selectResultFromDisplay(' + i + ')" oncontextmenu="showContextMenu(event, \'' + r.uuid + '\')">' +
         '<div class="result-title">' + escapeHtml(r.title || "Untitled") + '</div>' +
         '<div class="result-meta">' +
@@ -347,6 +369,13 @@
         (r.messageCount ? '<span>' + r.messageCount + ' msgs</span>' : '') +
         '</div></div>'
       ).join("");
+
+      // Show "Load more" when there are more sessions than currently displayed
+      if (!activeFolder && results.length < totalSessions) {
+        html += '<div style="padding:10px 14px;text-align:center"><button onclick="loadMore()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);padding:6px 16px;border-radius:4px;font-family:var(--font);font-size:12px;cursor:pointer">Load more (' + (totalSessions - results.length) + ' remaining)</button></div>';
+      }
+
+      resultsPanel.innerHTML = html;
 
       scrollSelectedIntoView();
     }
@@ -504,6 +533,10 @@
       html += '<span class="folder-dot" style="color:var(--text-dim)">#</span>';
       html += '<span class="folder-all">All Sessions</span>';
       html += '</div>';
+
+      if (folders.length === 0) {
+        html += '<div style="padding:8px 10px;font-size:10px;color:var(--text-dim);line-height:1.5">Right-click a session to organize it into folders</div>';
+      }
 
       for (const f of folders) {
         const isActive = activeFolder === f.id;

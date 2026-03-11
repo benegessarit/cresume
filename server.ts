@@ -117,10 +117,20 @@ export async function resolveProjectPath(projectDir: string): Promise<string | n
     }
   } catch { /* no index file */ }
 
-  // Decode dir name: -Users-<user>-X (macOS) or -home-<user>-X (Linux) -> ~/X
+  // Decode dir name: -Users-<user>-X (macOS), -home-<user>-X (Linux), -C-Users-<user>-X (Windows)
   const dirName = basename(projectDir);
-  const user = Bun.env.USER || Bun.env.LOGNAME || basename(HOME);
+  const user = Bun.env.USER || Bun.env.LOGNAME || Bun.env.USERNAME || basename(HOME);
   const prefixes = [`-Users-${user}-`, `-home-${user}-`];
+  // Windows: drive letter encoded as -C- or -D- etc.
+  const winDriveMatch = dirName.match(/^-([A-Z])-Users-([^-]+)-(.*)/);
+  if (winDriveMatch) {
+    const [, drive, , rest] = winDriveMatch;
+    const decoded = `${drive}:\\Users\\${winDriveMatch[2]}\\${rest.replace(/-/g, "\\")}`;
+    try {
+      await stat(decoded);
+      return decoded;
+    } catch { /* doesn't exist */ }
+  }
   for (const prefix of prefixes) {
     if (dirName.startsWith(prefix)) {
       const suffix = dirName.slice(prefix.length);
@@ -218,15 +228,19 @@ function sessionToResult(session: SessionEntry, score: number): SearchResult {
 
 export async function readConversationPreview(jsonlPath: string, maxLines = 300): Promise<{ turns: ConversationTurn[]; gitBranch?: string; totalLines: number }> {
   const file = Bun.file(jsonlPath);
+  const fileSize = file.size;
   const stream = file.stream();
   const decoder = new TextDecoder();
 
   const turns: ConversationTurn[] = [];
   let gitBranch: string | undefined;
   let lineCount = 0;
+  let bytesRead = 0;
   let partial = "";
+  const MAX_BYTES = 10 * 1024 * 1024; // Stop streaming after 10MB — estimate rest from file size
 
   for await (const chunk of stream) {
+    bytesRead += chunk.byteLength;
     partial += decoder.decode(chunk, { stream: true });
     const segments = partial.split("\n");
     partial = segments.pop() || "";
@@ -257,8 +271,17 @@ export async function readConversationPreview(jsonlPath: string, maxLines = 300)
         }
       } catch { /* skip malformed lines */ }
     }
+
+    // Stop reading after maxLines parsed and enough bytes read to estimate total
+    if (lineCount > maxLines && bytesRead >= MAX_BYTES) break;
   }
   if (partial) lineCount++;
+
+  // Estimate total lines if we stopped early
+  if (bytesRead < fileSize && bytesRead > 0) {
+    const avgBytesPerLine = bytesRead / lineCount;
+    lineCount = Math.round(fileSize / avgBytesPerLine);
+  }
 
   return { turns, gitBranch, totalLines: lineCount };
 }

@@ -1,10 +1,18 @@
 # cresume
 
-Search and resume Claude Code sessions. No external dependencies required.
+Search and resume your Claude Code sessions from a local web UI. Find that conversation where you fixed the auth bug, preview it, and jump back in with one command.
+
+![cresume screenshot](screenshot.png)
 
 ## Install
 
+Requires [Bun](https://bun.sh/) (no other dependencies):
+
 ```bash
+# Install Bun (if you don't have it)
+curl -fsSL https://bun.sh/install | bash      # macOS / Linux
+# powershell -c "irm bun.sh/install.ps1|iex"  # Windows
+
 # Clone and run
 git clone https://github.com/benegessarit/cresume
 cd cresume
@@ -15,14 +23,13 @@ bun install -g .
 cresume
 ```
 
-Requires [Bun](https://bun.sh/) (`brew install oven-sh/bun/bun`).
-
 ## Usage
 
 ```bash
 cresume                    # Start server, open browser
 cresume --port=8080        # Custom port
 cresume --no-browser       # Don't auto-open browser
+cresume --version          # Show version
 ```
 
 ### How it works
@@ -30,13 +37,14 @@ cresume --no-browser       # Don't auto-open browser
 1. Scans all `~/.claude/projects/*/sessions-index.json` files
 2. Loads session metadata into memory (fast substring search)
 3. Serves a web UI for searching, previewing, and copying resume commands
+4. Watches for new sessions and reloads automatically
 
 ### Search
 
 Type in the search bar to find sessions by:
 - First prompt text
+- Session summary
 - Project path
-- Session summary (when available)
 - Git branch name
 
 ### Folders
@@ -59,7 +67,7 @@ Right-click any session to organize it into folders. Folders are color-coded and
 
 ### Resume command
 
-Select a session to see its resume command in the bottom bar. Click "copy" or press `y` to copy it to clipboard, then paste into your terminal:
+Select a session to see its resume command in the bottom bar. Press `y` to copy, then paste into your terminal:
 
 ```bash
 cd '/path/to/project' && claude --resume <session-id>

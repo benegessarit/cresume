@@ -16,6 +16,9 @@ function parseArgs(): { port: number; noBrowser: boolean } {
       }
     } else if (arg === "--no-browser") {
       noBrowser = true;
+    } else if (arg === "--version" || arg === "-v") {
+      console.log("cresume 0.1.0");
+      process.exit(0);
     } else if (arg === "--help" || arg === "-h") {
       console.log(`cresume - Search and resume Claude Code sessions
 
@@ -24,6 +27,7 @@ Usage: cresume [options]
 Options:
   --port=PORT     Server port (default: ${DEFAULT_PORT})
   --no-browser    Don't open browser automatically
+  -v, --version   Show version
   -h, --help      Show this help`);
       process.exit(0);
     }
