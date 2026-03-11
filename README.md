@@ -6,7 +6,7 @@ Search and resume Claude Code sessions. No external dependencies required.
 
 ```bash
 # Clone and run
-git clone https://github.com/dbeyer/cresume
+git clone https://github.com/benegessarit/cresume
 cd cresume
 bun run start
 
