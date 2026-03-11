@@ -1,0 +1,24 @@
+{
+  "name": "cresume",
+  "version": "0.1.0",
+  "description": "Search and resume Claude Code sessions",
+  "license": "MIT",
+  "bin": {
+    "cresume": "./cli.ts"
+  },
+  "scripts": {
+    "start": "bun run cli.ts",
+    "dev": "bun --watch run cli.ts",
+    "test": "bun test"
+  },
+  "engines": {
+    "bun": ">=1.0"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "session",
+    "search",
+    "resume"
+  ]
+}
